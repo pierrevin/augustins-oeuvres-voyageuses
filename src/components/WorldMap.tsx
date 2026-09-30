@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { feature } from 'topojson-client'
 import world110 from 'world-atlas/countries-110m.json'
-import { TOULOUSE } from '../../lib/geo.js'
+import { TOULOUSE, distanceKm } from '../../lib/geo.js'
+import { MERS, NOMS_PAYS, RANG, REPERES, type Niveau } from './reperesCarte'
 
 export type Vue = 'monde' | 'europe' | 'france' | 'auto'
 export interface Point {
@@ -88,7 +89,7 @@ export function WorldMap({
   const H = hauteur
   const cleTrajets = vue === 'auto' ? trajets.map((t) => t.lat + ',' + t.lon).join(';') : ''
 
-  const { path, proj, large } = useMemo(() => {
+  const { path, proj, large, niveauBase } = useMemo(() => {
     let [[x0, y0], [x1, y1]] = vue === 'auto' ? cadreAuto(trajets) : CADRES[vue]
     const large = vue === 'monde' || x1 - x0 > 70
     if (large && vue === 'auto') [[x0, y0], [x1, y1]] = [[Math.max(-170, x0), Math.max(-55, y0)], [Math.min(179, x1), Math.min(72, y1)]]
@@ -97,7 +98,8 @@ export function WorldMap({
       ? d3.geoNaturalEarth1().rotate([vue === 'monde' ? 0 : -(x0 + x1) / 2, 0])
       : d3.geoConicConformal().parallels([40, 55]).rotate([-(x0 + x1) / 2, 0])
     ).fitExtent([[14, 14], [W - 14, H - 14]], cadre)
-    return { path: d3.geoPath(proj), proj, large }
+    const niveauBase: Niveau = large ? 'monde' : x1 - x0 > 22 ? 'europe' : 'france'
+    return { path: d3.geoPath(proj), proj, large, niveauBase }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vue, H, cleTrajets])
 
@@ -123,7 +125,21 @@ export function WorldMap({
 
   const fond = useMemo(() => {
     const geo = !large && detail ? detail : PAYS_110
-    return geo.features.map((f: any) => ({ id: String(f.id), d: path(f) ?? '' }))
+    return geo.features.map((f: any) => {
+      const id = String(f.id)
+      let lab: { x: number; y: number; aire: number; nom: string } | null = null
+      if (NOMS_PAYS[id]) {
+        // Étiquette au centre du plus grand polygone (évite la France placée en Guyane).
+        const polys = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [f.geometry.coordinates]
+        const g = polys
+          .map((c: any) => ({ type: 'Polygon', coordinates: c }))
+          .map((poly: any) => ({ poly, aire: path.area(poly) }))
+          .sort((a: any, b: any) => b.aire - a.aire)[0]
+        const c = g && path.centroid(g.poly)
+        if (c && isFinite(c[0])) lab = { x: c[0], y: c[1], aire: g.aire, nom: NOMS_PAYS[id] }
+      }
+      return { id, d: path(f) ?? '', lab }
+    })
   }, [path, large, detail])
   const sphere = useMemo(() => path({ type: 'Sphere' } as any) ?? '', [path])
   const graticule = useMemo(() => path(d3.geoGraticule10()) ?? '', [path])
@@ -150,6 +166,58 @@ export function WorldMap({
       aEtiqueter.add(p.key)
     }
   }
+  const niveau: Niveau = niveauBase === 'europe' && k >= 2.2 ? 'france' : niveauBase === 'monde' && k >= 3 ? 'europe' : niveauBase
+  const visible = (x: number, y: number) => x > 4 && x < W - 4 && y > 8 && y < H - 4
+
+  // Villes de référence absentes des données, placées après les étiquettes de données.
+  const nomsDonnees = new Set(points.map((p) => p.label.replace(/ \(.*\)$/, '')))
+  const reperes: { x: number; y: number; nom: string }[] = []
+  let posesEtiquettes: [number, number, number][] = []
+  {
+    const poses: [number, number, number][] = [[tlse[0] * k + zoom.x - 70, tlse[1] * k + zoom.y, 70]]
+    tri.filter((p) => aEtiqueter.has(p.key)).forEach((p) => {
+      const xy = proj([p.lon, p.lat])
+      if (xy) poses.push([xy[0] * k + zoom.x, xy[1] * k + zoom.y, p.label.replace(/ \(.*\)$/, '').length * 7 + 14])
+    })
+    REPERES.filter(([nom, , , niv]) => RANG[niveau] >= RANG[niv] && !nomsDonnees.has(nom)).forEach(([nom, lat, lon]) => {
+      const xy = proj([lon, lat])
+      if (!xy) return
+      const [x, y] = [xy[0] * k + zoom.x, xy[1] * k + zoom.y]
+      const l = nom.length * 6 + 10
+      if (!visible(x, y) || x > W - l || poses.some(([x0, y0, l0]) => x < x0 + l0 && x + l > x0 && Math.abs(y - y0) < 14)) return
+      poses.push([x, y, l])
+      reperes.push({ x: xy[0], y: xy[1], nom })
+    })
+    posesEtiquettes = poses
+  }
+  // Noms de pays : seulement ceux assez grands à l'écran, sans chevaucher les autres étiquettes (on tente un léger décalage).
+  const nomsPays: { x: number; y: number; nom: string }[] = []
+  {
+    const pris: [number, number, number][] = [...posesEtiquettes]
+    const seuil = niveau === 'monde' ? 2600 : 1500
+    fond.filter((f: any) => f.lab && f.lab.aire * k * k > seuil).sort((a: any, b: any) => b.lab.aire - a.lab.aire).forEach((f: any) => {
+      const l = f.lab.nom.length * 8 + 10
+      for (const dy of [0, 14, -14]) {
+        const [x, y] = [f.lab.x * k + zoom.x - l / 2, f.lab.y * k + zoom.y + dy]
+        if (!visible(x + l / 2, y) || pris.some(([x0, y0, l0]) => x < x0 + l0 && x + l > x0 && Math.abs(y - y0) < 13)) continue
+        pris.push([x, y, l])
+        nomsPays.push({ x: f.lab.x, y: f.lab.y + dy / k, nom: f.lab.nom })
+        break
+      }
+    })
+  }
+  const mers = MERS.filter(([, , , nivs]) => nivs.includes(niveau)).map(([nom, lat, lon]) => ({ nom, xy: proj([lon, lat]) })).filter((m) => m.xy)
+
+  // Échelle graphique (vues rapprochées) : longueur « ronde » d'environ 100 px à l'écran.
+  let echelle: { px: number; km: number } | null = null
+  if (!large) {
+    const a = proj.invert!([W / 2, H / 2]), b = proj.invert!([W / 2 + 100 / k, H / 2])
+    if (a && b) {
+      const kmPar100 = distanceKm([a[1], a[0]], [b[1], b[0]])
+      const km = [10, 20, 50, 100, 200, 250, 500, 1000, 2000].find((v) => v >= kmPar100 * 0.8) ?? 2000
+      echelle = { km, px: (100 * km) / kmPar100 }
+    }
+  }
   const marques = new Set(paysMarques)
   const ecran = (xy: [number, number]) => [xy[0] * k + zoom.x, xy[1] * k + zoom.y]
 
@@ -161,6 +229,18 @@ export function WorldMap({
           <path d={graticule} className="carte-graticule" />
           {fond.map((f: { id: string; d: string }, i: number) => (
             <path key={f.id + i} d={f.d} className={'carte-pays' + (marques.has(f.id) ? ' marque' : '')} />
+          ))}
+          {mers.map((m) => (
+            <text key={m.nom + m.xy![0]} x={m.xy![0]} y={m.xy![1]} className="carte-mer" style={{ fontSize: 11.5 / k }} textAnchor="middle">{m.nom}</text>
+          ))}
+          {nomsPays.map((n) => (
+            <text key={n.nom} x={n.x} y={n.y} className="carte-nom-pays" style={{ fontSize: 10 / k, letterSpacing: 1.2 / k }} textAnchor="middle">{n.nom}</text>
+          ))}
+          {reperes.map((r) => (
+            <g key={r.nom} className="carte-repere">
+              <circle cx={r.x} cy={r.y} r={2.2 / Math.sqrt(k)} strokeWidth={1 / k} />
+              <text x={r.x + 5 / k} y={r.y + 3.5 / k} style={{ fontSize: 10.5 / k, strokeWidth: 2.5 / k }}>{r.nom}</text>
+            </g>
           ))}
           {trajets.map((t, i) => {
             const b = proj([t.lon, t.lat])
@@ -216,6 +296,12 @@ export function WorldMap({
           </g>
         </g>
       </svg>
+      {echelle && (
+        <div className="carte-echelle" aria-label={`Échelle : ${echelle.km} km`} style={{ width: `calc(${(100 * echelle.px) / W}% + 16px)` }}>
+          <span />
+          {echelle.km} km
+        </div>
+      )}
       <div className="carte-zoom" title="Zoom : boutons, double-clic ou Ctrl + molette. Glisser pour se déplacer.">
         <button onClick={() => zoomer(1.6)} aria-label="Zoomer">+</button>
         <button onClick={() => zoomer(1 / 1.6)} aria-label="Dézoomer">−</button>

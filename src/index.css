@@ -408,3 +408,11 @@ input[type='search'] { min-width: 220px; flex: 1; }
 /* Correctifs */
 .img-vide.musee-grand { display: flex; }
 .img-vide.vignette, .record .img-vide { font-size: 0; }
+
+/* Repères de fond de carte : discrets, sous les données */
+.carte-nom-pays { font-family: var(--texte); font-weight: 600; text-transform: uppercase; fill: #b3a695; pointer-events: none; }
+.carte-mer { font-family: var(--titre); font-style: italic; fill: #9fb3bb; pointer-events: none; }
+.carte-repere circle { fill: #fffdf9; stroke: #9c9086; }
+.carte-repere text { font-family: var(--texte); fill: #8f857c; paint-order: stroke; stroke: #fffdf9; pointer-events: none; }
+.carte-echelle { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: var(--encre-2); background: rgba(255, 253, 249, .85); padding: 3px 8px 4px; border-radius: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 50px; box-sizing: border-box; }
+.carte-echelle span { display: block; height: 5px; border: 1.5px solid var(--encre-2); border-top: 0; }
