@@ -9,12 +9,16 @@ const VIDES = new Set('musee museum museo museu museen musees des de la le les d
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const mots = (s: string) => norm(s).split(/[^a-z0-9]+/).filter((m) => m.length >= 3)
 
+const erreurs: string[] = []
 type Page = { title: string; index: number; fullurl: string; thumbnail?: { source: string } }
 
 async function wiki(lang: string, q: string): Promise<Page[]> {
   const u = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=4&prop=pageimages|info&piprop=thumbnail&pithumbsize=480&inprop=url&redirects=1&gsrsearch=${encodeURIComponent(q)}`
-  const r = await fetch(u, { headers: { 'user-agent': UA } })
-  if (!r.ok) return []
+  const r = await fetch(u, { headers: { 'user-agent': UA, 'api-user-agent': UA, accept: 'application/json' } })
+  if (!r.ok) {
+    erreurs.push(`${lang} ${r.status}`)
+    return []
+  }
   const j: any = await r.json()
   return Object.values(j?.query?.pages ?? {}).sort((a: any, b: any) => a.index - b.index) as Page[]
 }
@@ -48,8 +52,13 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>) {
   return out
 }
 
-export default async function handler(_req: any, res: any) {
+export default async function handler(req: any, res: any) {
+  erreurs.length = 0
   try {
+    if (req.query?.test) {
+      const p = await wiki('fr', 'Musée Paul-Dupuy Toulouse').catch((e) => [String(e)])
+      return res.status(200).json({ p, erreurs })
+    }
     const fetchJson = async (u: string) => (await fetch(u)).json()
     const data = await construire(fetchJson)
     const compte = new Map<string, number>()
@@ -58,7 +67,9 @@ export default async function handler(_req: any, res: any) {
     const photos = await pool(top, 8, (k) => chercher(k.split('|')[0], k.split('|')[1]))
     const out: Record<string, unknown> = {}
     top.forEach((k, i) => photos[i] && (out[k] = photos[i]))
-    res.setHeader('Cache-Control', 'public, s-maxage=604800, stale-while-revalidate=2592000')
+    // On ne met en cache que si la recherche a vraiment fonctionné.
+    res.setHeader('Cache-Control', Object.keys(out).length > 10 ? 'public, s-maxage=604800, stale-while-revalidate=2592000' : 'no-store')
+    res.setHeader('x-erreurs-wikipedia', String(erreurs.length))
     res.status(200).json(out)
   } catch (e: any) {
     res.setHeader('Cache-Control', 'no-store')
