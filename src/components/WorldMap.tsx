@@ -129,8 +129,9 @@ export function WorldMap({
   const graticule = useMemo(() => path(d3.geoGraticule10()) ?? '', [path])
 
   const k = zoom.k
-  const max = d3.max(points, (p) => p.valeur) ?? 1
-  const r = d3.scaleSqrt().domain([0, max]).range([0, rMax])
+  // Les prêts à Toulouse même écraseraient l'échelle : on la cale sur les autres villes, Toulouse est plafonnée.
+  const max = d3.max(points.filter((p) => p.lat !== TOULOUSE[0] || p.lon !== TOULOUSE[1]), (p) => p.valeur) ?? d3.max(points, (p) => p.valeur) ?? 1
+  const r = d3.scaleSqrt().domain([0, max]).range([0, rMax]).clamp(true)
   const tri = points.slice().sort((a, b) => b.valeur - a.valeur)
   const aEtiqueter = new Set(tri.slice(0, etiquettes).map((p) => p.key))
   const tlse = proj([TOULOUSE[1], TOULOUSE[0]])!
