@@ -23,23 +23,35 @@ async function wiki(lang: string, q: string): Promise<Page[]> {
   return Object.values(j?.query?.pages ?? {}).sort((a: any, b: any) => a.index - b.index) as Page[]
 }
 
-function accepte(page: Page, musee: string, ville: string) {
+/** Score de ressemblance entre un titre d'article et une institution (0 = rejet). */
+function score(page: Page, musee: string, ville: string) {
   const t = new Set(mots(page.title))
-  const distinctifs = mots(musee).filter((m) => !VIDES.has(m) && norm(ville) !== m)
-  const communs = distinctifs.filter((m) => t.has(m)).length
-  if (distinctifs.length) return communs >= Math.min(2, distinctifs.length)
+  const v = mots(ville)
+  const distinctifs = [...new Set(mots(musee).filter((m) => !VIDES.has(m) && !v.includes(m)))]
+  const communs = distinctifs.filter((m) => t.has(m))
+  const villeOk = v.some((m) => t.has(m))
+  if (distinctifs.length) {
+    const ok = communs.length / distinctifs.length >= 0.5 || communs.some((m) => m.length >= 6)
+    return ok ? communs.length * 2 + (villeOk ? 1 : 0) : 0
+  }
   // Nom générique (« Musée des Beaux-Arts ») : la ville doit figurer dans le titre.
-  return mots(ville).some((m) => t.has(m)) && /mus|galer|pinacot|kunst|museo|museum/.test(norm(page.title))
+  return villeOk && /mus|galer|pinacot|kunst|museo|museum/.test(norm(page.title)) ? 1 : 0
 }
 
+/** Nom nettoyé pour la recherche : « Musée X/Ensemble Y » ou « A - B » ne garde que la première partie. */
+const nomCourt = (m: string) => m.split(/\s*[/|]\s*|\s+-\s+/)[0]
+
 async function chercher(musee: string, ville: string) {
+  const nom = nomCourt(musee)
   for (const lang of ['fr', 'en']) {
-    try {
-      const pages = await wiki(lang, `${musee} ${ville}`)
-      const p = pages.find((x) => x.thumbnail && accepte(x, musee, ville))
-      if (p) return { titre: p.title, url: p.fullurl, photo: p.thumbnail!.source, langue: lang }
-    } catch {
-      /* on essaie la langue suivante */
+    for (const q of [`${nom} ${ville}`, nom]) {
+      try {
+        const pages = (await wiki(lang, q)).filter((p) => p.thumbnail)
+        const best = pages.map((p) => ({ p, s: score(p, nom, ville) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s)[0]
+        if (best) return { titre: best.p.title, url: best.p.fullurl, photo: best.p.thumbnail!.source, langue: lang }
+      } catch {
+        /* requête suivante */
+      }
     }
   }
   return null
@@ -52,19 +64,15 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>) {
   return out
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(_req: any, res: any) {
   erreurs.length = 0
   try {
-    if (req.query?.test) {
-      const p = await wiki('fr', 'Musée Paul-Dupuy Toulouse').catch((e) => [String(e)])
-      return res.status(200).json({ p, erreurs })
-    }
     const fetchJson = async (u: string) => (await fetch(u)).json()
     const data = await construire(fetchJson)
     const compte = new Map<string, number>()
     data.prets.forEach((p) => compte.set(p.musee + '|' + p.ville, (compte.get(p.musee + '|' + p.ville) ?? 0) + 1))
     const top = [...compte.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX).map(([k]) => k)
-    const photos = await pool(top, 8, (k) => chercher(k.split('|')[0], k.split('|')[1]))
+    const photos = await pool(top, 4, (k) => chercher(k.split('|')[0], k.split('|')[1]))
     const out: Record<string, unknown> = {}
     top.forEach((k, i) => photos[i] && (out[k] = photos[i]))
     // On ne met en cache que si la recherche a vraiment fonctionné.
