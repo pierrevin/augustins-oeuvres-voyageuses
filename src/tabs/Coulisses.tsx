@@ -123,7 +123,7 @@ export function Coulisses({ idx }: { idx: Index }) {
                 <span className="ctl-gravite" title={GRAVITE[x.gravite].d}>{GRAVITE[x.gravite].l}</span>
                 <span className="ctl-titre">{x.titre}</span>
                 <span className="ctl-jeu">{x.jeu}</span>
-                <span className="ctl-nb">{fmt(x.nb)} <small>/ {fmt(x.total)}</small></span>
+                <span className="ctl-nb">{fmt(x.nb)} <small>{x.unite ?? `/ ${fmt(x.total)}`}</small></span>
               </summary>
               <div className="ctl-corps">
                 <p>{x.constat}</p>

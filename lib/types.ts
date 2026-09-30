@@ -66,6 +66,7 @@ export interface Controle {
   titre: string
   nb: number
   total: number
+  unite?: string
   gravite: Gravite
   constat: string
   regle: string

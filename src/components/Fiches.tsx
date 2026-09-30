@@ -43,7 +43,7 @@ function FicheOeuvre({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: 
   return (
     <div className="fiche">
       <div className="fiche-visuel">
-        <Img srcs={o.images} alt={o.titre} className="fiche-img" />
+        <Img srcs={o.images} alt={o.titre} className="fiche-img" eager />
         {o.credit && <p className="credit">{o.credit}</p>}
       </div>
       <div className="fiche-texte">

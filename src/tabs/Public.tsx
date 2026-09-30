@@ -141,7 +141,7 @@ function Jeu({ idx, passeport, maj }: { idx: Index; passeport: Passeport; maj: (
       </div>
       <div className="jeu-grille">
         <div className="jeu-oeuvre">
-          <Img srcs={q.oeuvre.images} alt={q.oeuvre.titre} className="jeu-img" />
+          <Img srcs={q.oeuvre.images} alt={q.oeuvre.titre} className="jeu-img" eager />
           {q.oeuvre.credit && <p className="credit">{q.oeuvre.credit}</p>}
         </div>
         <div className="jeu-question">
@@ -215,7 +215,7 @@ function Carnet({ idx }: { idx: Index }) {
       </div>
       <div className="carnet-grille">
         <div className="carnet-oeuvre">
-          <Img srcs={o.images} alt={o.titre} className="carnet-img" />
+          <Img srcs={o.images} alt={o.titre} className="carnet-img" eager />
           <h3>{o.titre}</h3>
           <p>{o.artiste}{o.datation ? `, ${o.datation}` : ''}</p>
           <div className="compteur">

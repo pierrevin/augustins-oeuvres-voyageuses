@@ -227,7 +227,9 @@ export async function construire(fetchJson: FetchJson, checkUrl?: CheckUrl): Pro
       id,
       inv: propre(rows[0].ndeg_inventaire),
       titre,
-      variantesTitre: [...new Set([...titres, ...(src ? [propre(src.designation ?? src.designation_1)].filter(Boolean) as string[] : [])])].filter((t) => t !== titre),
+      variantesTitre: [...new Map([...titres, ...(src ? [propre(src.designation ?? src.designation_1)].filter(Boolean) as string[] : [])]
+        .filter((t) => cleTexte(t) !== cleTexte(titre))
+        .map((t) => [cleTexte(t), t])).values()],
       artiste,
       artisteId: slug(artiste),
       domaine: domaineDe(propre(src?.domaine)),
@@ -421,7 +423,7 @@ export async function construire(fetchJson: FetchJson, checkUrl?: CheckUrl): Pro
     formats.set(f, (formats.get(f) ?? 0) + 1)
   })
   ajoute({
-    id: 'datation', jeu: 'Inventaire', titre: 'Datation en texte libre', nb: formats.size, total: NI, gravite: 'important',
+    id: 'datation', jeu: 'Inventaire', titre: 'Datation en texte libre', nb: formats.size, total: 0, unite: 'formats différents', gravite: 'important',
     constat: `${formats.size} formats différents pour dater une œuvre (siècle, année, « vers », « avant », « entre », points d’interrogation…). Impossible de trier ou filtrer par date sans les interpréter.`,
     regle: 'Extraction du premier millésime pour en déduire un siècle approximatif.',
     exemples: [...formats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([f, n]) => `« ${f} » : ${n} fois`),

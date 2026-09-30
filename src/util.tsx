@@ -40,7 +40,7 @@ export function indexer(data: Payload): Index {
 }
 
 /** Image avec chaîne de repli : on essaie chaque URL, puis une vignette neutre. */
-export function Img({ srcs, alt, className, fallback }: { srcs: string[]; alt: string; className?: string; fallback?: ReactNode }) {
+export function Img({ srcs, alt, className, fallback, eager }: { srcs: string[]; alt: string; className?: string; fallback?: ReactNode; eager?: boolean }) {
   const [i, setI] = useState(0)
   if (i >= srcs.length)
     return (
@@ -48,7 +48,7 @@ export function Img({ srcs, alt, className, fallback }: { srcs: string[]; alt: s
         {fallback ?? <span>Image indisponible</span>}
       </div>
     )
-  return <img className={className} src={srcs[i]} alt={alt} loading="lazy" onError={() => setI(i + 1)} />
+  return <img className={className} src={srcs[i]} alt={alt} loading={eager ? "eager" : "lazy"} onError={() => setI(i + 1)} />
 }
 
 export function telechargerCsv(nom: string, lignes: (string | number | null)[][]) {
