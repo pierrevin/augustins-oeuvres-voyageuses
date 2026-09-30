@@ -404,3 +404,7 @@ input[type='search'] { min-width: 220px; flex: 1; }
   .onglet span { font-size: 13.5px; line-height: 1.2; }
   .axe { font-size: 16px; }
 }
+
+/* Correctifs */
+.img-vide.musee-grand { display: flex; }
+.img-vide.vignette, .record .img-vide { font-size: 0; }

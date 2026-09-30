@@ -187,7 +187,11 @@ function Jeu({ idx, passeport, maj }: { idx: Index; passeport: Passeport; maj: (
 // ---------- Carnets de voyage ----------
 function Carnet({ idx }: { idx: Index }) {
   const ouvrir = useFiche()
-  const voyageuses = useMemo(() => idx.data.oeuvres.filter((o) => o.images.length && o.nbPrets >= 3).sort((a, b) => b.kmParcourus - a.kmParcourus), [idx])
+  const voyageuses = useMemo(() => {
+    const tri = idx.data.oeuvres.slice().sort((a, b) => b.kmParcourus - a.kmParcourus)
+    const belles = tri.filter((o) => o.images.length && o.nbPrets >= 3)
+    return belles.length ? belles : tri
+  }, [idx])
   const [id, setId] = useState(voyageuses[0]?.id)
   const [etape, setEtape] = useState(0)
   const [lecture, setLecture] = useState(true)
