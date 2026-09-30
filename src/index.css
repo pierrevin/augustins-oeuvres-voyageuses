@@ -345,5 +345,11 @@ input[type='search'] { min-width: 220px; flex: 1; }
   .ctl-jeu { display: none; }
   .fiche-dl div { grid-template-columns: 110px 1fr; }
   .modale { padding: 20px 16px; }
-  input[type='search'] { min-width: 0; width: 100%; }
+  input[type='search'] { min-width: 0; width: 100%; flex-basis: 100%; }
+  .entete-in { padding: 8px 12px 0; }
+  .onglets { width: 100%; }
+  .onglet { flex: 1; padding: 8px 8px 10px; white-space: normal; }
+  .onglet small { display: none; }
+  .onglet span { font-size: 13.5px; line-height: 1.2; }
+  .axe { font-size: 16px; }
 }
