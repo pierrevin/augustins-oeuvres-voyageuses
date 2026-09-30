@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# Les Augustins hors les murs
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Refonte du tableau de bord des prêts du musée des Augustins (Toulouse), réalisée pour le cours de datavisualisation de l'EBD.
 
-Currently, two official plugins are available:
+Trois onglets :
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Œuvres voyageuses** (grand public) : jeu « Où est-elle partie ? », carnets de voyage animés, galerie, passeport.
+- **Tableau de bord** (équipes du musée) : indicateurs filtrables, frise, carte, œuvres hors les murs à une date donnée, classements, table exportable en CSV.
+- **Coulisses des données** (pédagogie) : sources, méthode, verdict, effet du nettoyage, incohérences, limites.
 
-## React Compiler
+## Données
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Open Data Toulouse Métropole, Licence Ouverte v2.0 :
 
-## Expanding the Oxlint configuration
+- [25 ans de prêts des collections du musée des Augustins](https://data.toulouse-metropole.fr/explore/dataset/prets-des-collections-du-musee-des-augustins/)
+- [Inventaire des collections du musée des Augustins](https://data.toulouse-metropole.fr/explore/dataset/inventaire-collections-augustins/)
+- [Inventaire des œuvres déposées au musée des Augustins](https://data.toulouse-metropole.fr/explore/dataset/inventaire-des-oeuvres-deposees-au-musee-des-augustins/)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Architecture
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Pas de base de données.
+
+- `api/data.ts` : fonction serverless Vercel. Elle interroge l'API Explore v2.1, lance le pipeline et renvoie un JSON unique, en cache 24 h sur le CDN.
+- `lib/pipeline.ts` : nettoyage, jointure prêts / inventaire / dépôts, vérification des images, audit qualité. Chaque règle est commentée.
+- `lib/geo.ts` : seul référentiel maintenu à la main (coordonnées des villes, corrections de lieux). Une ville nouvelle apparaît dans l'onglet Coulisses (« Villes non géocodées ») : il suffit de l'ajouter ici.
+- `src/` : front React + Vite, cartes et graphiques en D3.
+
+## Développement
+
+```bash
+npm install
+npx vercel dev   # front + fonction /api/data
+npm run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Chaque push sur `main` est déployé automatiquement sur Vercel.
