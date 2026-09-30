@@ -133,8 +133,23 @@ export function WorldMap({
   const max = d3.max(points.filter((p) => p.lat !== TOULOUSE[0] || p.lon !== TOULOUSE[1]), (p) => p.valeur) ?? d3.max(points, (p) => p.valeur) ?? 1
   const r = d3.scaleSqrt().domain([0, max]).range([0, rMax]).clamp(true)
   const tri = points.slice().sort((a, b) => b.valeur - a.valeur)
-  const aEtiqueter = new Set(tri.slice(0, etiquettes).map((p) => p.key))
   const tlse = proj([TOULOUSE[1], TOULOUSE[0]])!
+  // Étiquettes des plus grosses villes, sans chevauchement (placement glouton en coordonnées écran).
+  const aEtiqueter = new Set<string>()
+  {
+    const poses: [number, number, number][] = [[tlse[0] * zoom.k + zoom.x - 70, tlse[1] * zoom.k + zoom.y, 70]]
+    for (const p of tri) {
+      if (aEtiqueter.size >= etiquettes) break
+      const xy = proj([p.lon, p.lat])
+      if (!xy || (p.lat === TOULOUSE[0] && p.lon === TOULOUSE[1])) continue
+      const [x, y] = [xy[0] * zoom.k + zoom.x, xy[1] * zoom.k + zoom.y]
+      if (x < 0 || x > W - 40 || y < 10 || y > H) continue
+      const larg = p.label.replace(/ \(.*\)$/, '').length * 7 + 14
+      if (poses.some(([x0, y0, l0]) => x < x0 + l0 && x + larg > x0 && Math.abs(y - y0) < 16)) continue
+      poses.push([x, y, larg])
+      aEtiqueter.add(p.key)
+    }
+  }
   const marques = new Set(paysMarques)
   const ecran = (xy: [number, number]) => [xy[0] * k + zoom.x, xy[1] * k + zoom.y]
 
