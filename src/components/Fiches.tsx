@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect } from 'react'
 import { WorldMap } from './WorldMap'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, siecleRomain, type Index } from '../util'
+import { initiales, institutions, usePhotosMusees } from './Musees'
 
-export type Cible = { type: 'oeuvre' | 'artiste'; id: string } | null
+export type Cible = { type: 'oeuvre' | 'artiste' | 'musee'; id: string } | null
 export const FicheCtx = createContext<(c: Cible) => void>(() => {})
 export const useFiche = () => useContext(FicheCtx)
 
@@ -18,7 +19,7 @@ export function Fiche({ cible, idx, fermer }: { cible: Cible; idx: Index; fermer
     <div className="modale-fond" onClick={fermer}>
       <div className="modale" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <button className="modale-fermer" onClick={fermer} aria-label="Fermer">×</button>
-        {cible.type === 'oeuvre' ? <FicheOeuvre id={cible.id} idx={idx} ouvrir={ouvrir} /> : <FicheArtiste id={cible.id} idx={idx} ouvrir={ouvrir} />}
+        {cible.type === 'oeuvre' ? <FicheOeuvre id={cible.id} idx={idx} ouvrir={ouvrir} /> : cible.type === 'artiste' ? <FicheArtiste id={cible.id} idx={idx} ouvrir={ouvrir} /> : <FicheMusee id={cible.id} idx={idx} ouvrir={ouvrir} />}
       </div>
     </div>
   )
@@ -71,7 +72,7 @@ function FicheOeuvre({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: 
             <li key={p.id}>
               <span className="itin-date">{dateFr(p.debut)} → {p.datesInversees ? <em title="Date de fin antérieure au début dans la source">{dateFr(p.fin)} ⚠</em> : dateFr(p.fin)}</span>
               <span className="itin-lieu">{p.ville} <small>({p.pays})</small></span>
-              <span className="itin-expo">« {p.expo} », {p.musee}</span>
+              <span className="itin-expo">« {p.expo} », <button className="lien" onClick={() => ouvrir({ type: 'musee', id: p.musee + '|' + p.ville })}>{p.musee}</button></span>
             </li>
           ))}
         </ol>
@@ -111,6 +112,58 @@ function FicheArtiste({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c:
             <span className="co-meta">{o.nbPrets} prêt{o.nbPrets > 1 ? 's' : ''}</span>
           </button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function FicheMusee({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: Cible) => void }) {
+  const photos = usePhotosMusees()
+  const m = institutions(idx.data.prets.filter((p) => p.musee + '|' + p.ville === id))[0]
+  if (!m) return <p>Institution introuvable.</p>
+  const photo = photos[id]
+  const expos = [...new Map(m.prets.map((p) => [p.expo + p.debut, p])).values()].sort((a, b) => b.debut.localeCompare(a.debut))
+  const autresIci = institutions(idx.data.prets.filter((p) => p.ville === m.ville && p.pays === m.pays)).filter((x) => x.cle !== id)
+  return (
+    <div className="fiche">
+      <div className="fiche-visuel">
+        {photo ? <img className="fiche-img" src={photo.photo} alt={m.nom} /> : <div className="img-vide fiche-img musee-grand"><span className="musee-initiales">{initiales(m.nom)}</span></div>}
+        {photo && <p className="credit">Photo : Wikipédia, article <a href={photo.url} target="_blank" rel="noreferrer">« {photo.titre} » ↗</a> (rapprochement automatique)</p>}
+      </div>
+      <div className="fiche-texte">
+        <p className="surtitre">Institution emprunteuse</p>
+        <h2>{m.nom}</h2>
+        <p className="jeu-artiste">{m.ville} ({m.pays}){m.prets[0].km ? ` · ${fmt(m.prets[0].km)} km de Toulouse` : ''}</p>
+        <div className="fiche-chiffres">
+          <div><strong>{m.prets.length}</strong><span>prêt{m.prets.length > 1 ? 's' : ''}</span></div>
+          <div><strong>{m.oeuvres}</strong><span>œuvre{m.oeuvres > 1 ? 's' : ''} différente{m.oeuvres > 1 ? 's' : ''}</span></div>
+          <div><strong>{new Set(m.prets.map((p) => p.expo)).size}</strong><span>exposition(s)</span></div>
+          <div><strong>{m.annees[0] === m.annees[1] ? m.annees[0] : `${m.annees[0]}–${m.annees[1]}`}</strong><span>{m.nbAnnees} année{m.nbAnnees > 1 ? 's' : ''} de prêt</span></div>
+        </div>
+        {!photo && <p className="note">Pas de photo : aucun article Wikipédia n’a pu être rapproché de façon fiable.</p>}
+        {autresIci.length > 0 && <p className="note">Autres institutions à {m.ville} : {autresIci.slice(0, 6).map((x, i) => <span key={x.cle}>{i > 0 && ', '}<button className="lien" onClick={() => ouvrir({ type: 'musee', id: x.cle })}>{x.nom}</button></span>)}</p>}
+      </div>
+      <div className="fiche-voyages">
+        <h3>Expositions et œuvres prêtées</h3>
+        <div className="expos-musee">
+          {expos.map((e) => {
+            const oeuvres = m.prets.filter((p) => p.expo === e.expo && p.debut === e.debut).map((p) => idx.oeuvre.get(p.oeuvreId)!)
+            return (
+              <div key={e.expo + e.debut} className="expo-musee">
+                <p><strong>« {e.expo} »</strong> <span className="note">{dateFr(e.debut)} → {dateFr(e.fin)}</span></p>
+                <div className="galerie petite">
+                  {oeuvres.map((o) => (
+                    <button key={o.id} className="carte-oeuvre" onClick={() => ouvrir({ type: 'oeuvre', id: o.id })}>
+                      <Img srcs={o.images} alt={o.titre} />
+                      <span className="co-titre">{o.titre}</span>
+                      <span className="co-artiste">{o.artiste}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

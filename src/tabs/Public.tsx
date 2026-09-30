@@ -4,15 +4,17 @@ import { DOMAINES, type Domaine, type Oeuvre, type Pret } from '../../lib/types.
 import { PAYS } from '../../lib/geo.js'
 import { WorldMap } from '../components/WorldMap'
 import { useFiche } from '../components/Fiches'
+import { Recherche, correspond, type Filtre } from '../components/Recherche'
+import { BlocMusees } from '../components/Musees'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, melanger, moisAnnee, siecleRomain, stockage, type Index } from '../util'
 
-type Section = 'jeu' | 'carnet' | 'explorer' | 'passeport'
+type Section = 'jeu' | 'carnet' | 'explorer' | 'musees' | 'passeport'
 interface Passeport { pays: string[]; oeuvres: string[]; meilleur: number; parties: number }
 const [lirePasseport, ecrirePasseport] = stockage<Passeport>('augustins-passeport', { pays: [], oeuvres: [], meilleur: 0, parties: 0 })
 
 
 export function Public({ idx }: { idx: Index }) {
-  const [section, setSection] = useState<Section>('jeu')
+  const [section, setSection] = useState<Section>('carnet')
   const [passeport, setPasseport] = useState<Passeport>(lirePasseport)
   const maj = (f: (p: Passeport) => Passeport) =>
     setPasseport((p) => {
@@ -35,13 +37,14 @@ export function Public({ idx }: { idx: Index }) {
         <Records idx={idx} />
       </section>
       <nav className="sous-nav" aria-label="Rubriques">
-        {([['jeu', 'Où est-elle partie ?'], ['carnet', 'Carnets de voyage'], ['explorer', 'Explorer les œuvres'], ['passeport', `Mon passeport (${passeport.pays.length})`]] as [Section, string][]).map(([k, l]) => (
+        {([['carnet', 'Carnets de voyage'], ['explorer', 'Explorer les œuvres'], ['musees', 'Les musées d’accueil'], ['jeu', 'Jeu : où est-elle partie ?'], ['passeport', `Mon passeport (${passeport.pays.length})`]] as [Section, string][]).map(([k, l]) => (
           <button key={k} className={section === k ? 'on' : ''} onClick={() => setSection(k)}>{l}</button>
         ))}
       </nav>
       {section === 'jeu' && <Jeu idx={idx} passeport={passeport} maj={maj} />}
       {section === 'carnet' && <Carnet idx={idx} />}
       {section === 'explorer' && <Explorer idx={idx} />}
+      {section === 'musees' && <BlocMusees prets={idx.data.prets} titre="Les musées qui ont accueilli nos œuvres" sous="Du musée voisin au grand musée étranger : les lieux où les œuvres des Augustins ont été exposées. Cliquez sur un musée pour voir ce qu’il a emprunté." />}
       {section === 'passeport' && <PasseportVue idx={idx} passeport={passeport} maj={maj} />}
     </div>
   )
@@ -256,20 +259,17 @@ function Explorer({ idx }: { idx: Index }) {
   const ouvrir = useFiche()
   const [domaine, setDomaine] = useState<Domaine | 'tous'>('tous')
   const [siecle, setSiecle] = useState<string>('tous')
-  const [pays, setPays] = useState('tous')
-  const [q, setQ] = useState('')
+  const [filtres, setFiltres] = useState<Filtre[]>([])
   const [tri, setTri] = useState<'prets' | 'km' | 'titre' | 'date'>('prets')
   const [imagesSeules, setImagesSeules] = useState(true)
   const [n, setN] = useState(48)
   const siecles = [...new Set(idx.data.oeuvres.map((o) => o.siecle).filter(Boolean) as number[])].sort((a, b) => a - b)
-  const listePays = [...new Set(idx.data.prets.map((p) => p.pays))].sort((a, b) => a.localeCompare(b, 'fr'))
   const liste = idx.data.oeuvres
     .filter((o) =>
       (domaine === 'tous' || o.domaine === domaine) &&
       (siecle === 'tous' || String(o.siecle) === siecle) &&
-      (pays === 'tous' || o.pays.includes(pays)) &&
       (!imagesSeules || o.images.length > 0) &&
-      (!q || `${o.titre} ${o.artiste}`.toLowerCase().includes(q.toLowerCase())),
+      (!filtres.length || (idx.pretsParOeuvre.get(o.id) ?? []).some((p) => correspond(filtres, p, o))),
     )
     .sort((a, b) =>
       tri === 'prets' ? b.nbPrets - a.nbPrets : tri === 'km' ? b.kmParcourus - a.kmParcourus : tri === 'titre' ? a.titre.localeCompare(b.titre, 'fr') : (a.siecle ?? 99) - (b.siecle ?? 99),
@@ -278,7 +278,7 @@ function Explorer({ idx }: { idx: Index }) {
     <section className="bloc">
       <h2>Explorer les œuvres</h2>
       <div className="filtres">
-        <input type="search" placeholder="Titre ou artiste…" value={q} onChange={(e) => { setQ(e.target.value); setN(48) }} />
+        <Recherche idx={idx} filtres={filtres} setFiltres={(f) => { setFiltres(f); setN(48) }} placeholder="Une œuvre, un artiste, une ville, un pays, un musée…" onOeuvre={(id) => ouvrir({ type: 'oeuvre', id })} />
         <select value={domaine} onChange={(e) => setDomaine(e.target.value as Domaine)} aria-label="Domaine">
           <option value="tous">Tous les domaines</option>
           {DOMAINES.map((d) => <option key={d}>{d}</option>)}
@@ -286,10 +286,6 @@ function Explorer({ idx }: { idx: Index }) {
         <select value={siecle} onChange={(e) => setSiecle(e.target.value)} aria-label="Siècle">
           <option value="tous">Tous les siècles</option>
           {siecles.map((s) => <option key={s} value={s}>{siecleRomain(s)}</option>)}
-        </select>
-        <select value={pays} onChange={(e) => setPays(e.target.value)} aria-label="Destination">
-          <option value="tous">Toutes les destinations</option>
-          {listePays.map((p) => <option key={p}>{p}</option>)}
         </select>
         <select value={tri} onChange={(e) => setTri(e.target.value as typeof tri)} aria-label="Tri">
           <option value="prets">Les plus prêtées</option>

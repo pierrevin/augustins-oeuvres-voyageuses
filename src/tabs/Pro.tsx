@@ -3,6 +3,8 @@ import * as d3 from 'd3'
 import { DOMAINES, type Domaine, type Pret } from '../../lib/types.js'
 import { WorldMap, type Vue } from '../components/WorldMap'
 import { useFiche } from '../components/Fiches'
+import { Recherche, correspond, type Filtre } from '../components/Recherche'
+import { BlocMusees } from '../components/Musees'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, pct, telechargerCsv, type Index } from '../util'
 
 type Zone = 'tout' | 'france' | 'etranger'
@@ -14,20 +16,18 @@ export function Pro({ idx }: { idx: Index }) {
   const [a, setA] = useState(annees[1])
   const [domaines, setDomaines] = useState<Set<Domaine>>(new Set(DOMAINES))
   const [zone, setZone] = useState<Zone>('tout')
-  const [q, setQ] = useState('')
+  const [filtres, setFiltres] = useState<Filtre[]>([])
 
   const prets = useMemo(() => {
-    const qq = q.trim().toLowerCase()
     return data.prets.filter((p) => {
       const o = idx.oeuvre.get(p.oeuvreId)!
       if (p.annee < de || p.annee > a) return false
       if (!domaines.has(o.domaine)) return false
       if (zone === 'france' && p.pays !== 'France') return false
       if (zone === 'etranger' && p.pays === 'France') return false
-      if (qq && !`${o.titre} ${o.artiste} ${o.inv} ${p.expo} ${p.musee} ${p.ville}`.toLowerCase().includes(qq)) return false
-      return true
+      return correspond(filtres, p, o)
     })
-  }, [data, idx, de, a, domaines, zone, q])
+  }, [data, idx, de, a, domaines, zone, filtres])
 
   const basculer = (d: Domaine) => {
     const s = new Set(domaines)
@@ -36,7 +36,7 @@ export function Pro({ idx }: { idx: Index }) {
     setDomaines(s)
   }
   const reinit = () => {
-    setDe(annees[0]); setA(annees[1]); setDomaines(new Set(DOMAINES)); setZone('tout'); setQ('')
+    setDe(annees[0]); setA(annees[1]); setDomaines(new Set(DOMAINES)); setZone('tout'); setFiltres([])
   }
 
   return (
@@ -46,7 +46,8 @@ export function Pro({ idx }: { idx: Index }) {
         <p>{fmt(data.prets.length)} prêts enregistrés de {annees[0]} à {annees[1]}, croisés avec l’inventaire ({fmt(data.collection.totalInventaire)} œuvres) et le registre des dépôts. Tous les graphiques suivent les filtres.</p>
       </section>
 
-      <div className="filtres" role="group" aria-label="Filtres">
+      <div className="filtres flottants" role="group" aria-label="Filtres">
+        <Recherche idx={idx} filtres={filtres} setFiltres={setFiltres} />
         <label>Période
           <span className="plage">
             <select value={de} onChange={(e) => setDe(Math.min(+e.target.value, a))}>
@@ -70,8 +71,8 @@ export function Pro({ idx }: { idx: Index }) {
             <button key={z} className={zone === z ? 'on' : ''} onClick={() => setZone(z)}>{{ tout: 'Partout', france: 'France', etranger: 'Étranger' }[z]}</button>
           ))}
         </div>
-        <input type="search" placeholder="Œuvre, artiste, n° d’inventaire, musée…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="lien" onClick={reinit}>Réinitialiser</button>
+        <span className="compteur-filtre"><strong>{fmt(prets.length)}</strong> prêt{prets.length > 1 ? 's' : ''}</span>
+        {(filtres.length > 0 || zone !== 'tout' || domaines.size < DOMAINES.length || de !== annees[0] || a !== annees[1]) && <button className="lien" onClick={reinit}>Réinitialiser</button>}
       </div>
 
       <Indicateurs prets={prets} idx={idx} />
@@ -79,8 +80,9 @@ export function Pro({ idx }: { idx: Index }) {
         <Frise prets={prets} idx={idx} annees={[de, a]} />
         <Rotation idx={idx} />
       </div>
-      <CarteDestinations prets={prets} />
+      <CarteDestinations prets={prets} filtrerVille={(k, label) => !filtres.some((f) => f.valeur === k) && setFiltres([...filtres, { type: 'ville', valeur: k, label }])} />
       <HorsLesMurs idx={idx} />
+      <BlocMusees prets={prets} titre="Institutions emprunteuses" sous="Qui emprunte, depuis quand, combien d’œuvres. Les cartes suivent les filtres. Cliquez pour voir les expositions et les œuvres prêtées." />
       <Classements prets={prets} idx={idx} />
       <Tableau prets={prets} idx={idx} />
     </div>
@@ -197,7 +199,7 @@ function Rotation({ idx }: { idx: Index }) {
   )
 }
 
-function CarteDestinations({ prets }: { prets: Pret[] }) {
+function CarteDestinations({ prets, filtrerVille }: { prets: Pret[]; filtrerVille: (k: string, label: string) => void }) {
   const [vue, setVue] = useState<Vue>('monde')
   const [sel, setSel] = useState<string | null>(null)
   const parVille = d3.rollups(prets.filter((p) => p.lat !== null), (v) => v, (p) => p.ville + '|' + p.pays)
@@ -217,7 +219,7 @@ function CarteDestinations({ prets }: { prets: Pret[] }) {
       </div>
       <p className="sous">Taille des cercles : nombre de prêts. Cliquez une ville pour voir ses expositions.</p>
       <div className="carte-et-panneau">
-        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} rMax={vue === 'monde' ? 16 : 26} />
+        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} rMax={vue === 'monde' ? 16 : 26} etiquettes={vue === 'monde' ? 8 : 14} />
         <aside className="panneau">
           {sel ? (
             <>
@@ -228,7 +230,10 @@ function CarteDestinations({ prets }: { prets: Pret[] }) {
                   <li key={k}><strong>{v[0].expo}</strong><span>{v[0].musee}, {v[0].debut.slice(0, 4)} · {v.length} œuvre{v.length > 1 ? 's' : ''}</span></li>
                 ))}
               </ul>
-              <button className="lien" onClick={() => setSel(null)}>Fermer</button>
+              <div className="panneau-actions">
+                <button className="bouton" onClick={() => filtrerVille(sel, choix[0]?.ville ?? sel)}>Filtrer le tableau de bord sur cette ville</button>
+                <button className="lien" onClick={() => setSel(null)}>Fermer</button>
+              </div>
             </>
           ) : (
             <>

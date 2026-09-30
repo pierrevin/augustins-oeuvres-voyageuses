@@ -114,24 +114,30 @@ input[type='search'] { min-width: 220px; flex: 1; }
 
 /* Carte */
 .carte { position: relative; width: 100%; }
-.carte svg { width: 100%; height: 100%; display: block; }
+.carte svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+.carte svg:active { cursor: grabbing; }
+.carte { overflow: hidden; border-radius: 10px; }
+.carte-zoom { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; }
+.carte-zoom button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--trait); background: rgba(255, 253, 249, .92); font-size: 18px; line-height: 1; box-shadow: var(--ombre); }
+.carte-zoom button.texte { width: auto; padding: 0 10px; font-size: 12.5px; font-weight: 600; }
+.carte-ville { font-family: var(--texte); font-weight: 600; fill: var(--encre-2); paint-order: stroke; stroke: #fffdf9; pointer-events: none; }
 .carte-ocean { fill: #eef2f3; }
-.carte-graticule { fill: none; stroke: #dfe6e8; stroke-width: .5; }
-.carte-pays { fill: #e6ddd0; stroke: #fffdf9; stroke-width: .6; }
+.carte-graticule { fill: none; stroke: #dfe6e8; stroke-width: .5; vector-effect: non-scaling-stroke; }
+.carte-pays { fill: #e6ddd0; stroke: #fffdf9; stroke-width: .7; vector-effect: non-scaling-stroke; }
 .carte-pays.marque { fill: #e2a58c; }
 .carte-bulle { fill: rgba(164, 69, 42, .55); stroke: #fffdf9; stroke-width: 1.2; }
 .carte-bulle.cliquable { cursor: pointer; }
 .carte-bulle:hover, .carte-bulle.sel { fill: var(--brique); stroke: var(--encre); stroke-width: 2; }
-.carte-trajet { fill: none; stroke-linecap: round; }
+.carte-trajet { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .carte-trajet.fait { stroke: rgba(164, 69, 42, .45); stroke-width: 1.6; }
 .carte-trajet.actif { stroke: var(--brique); stroke-width: 3; stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: trace 1.1s ease-out forwards; }
 .carte-trajet.futur { stroke: none; }
 @keyframes trace { to { stroke-dashoffset: 0; } }
 .carte-etape { fill: var(--brique); stroke: #fffdf9; stroke-width: 1.5; }
 .carte-etape.actif { fill: var(--ocre); stroke: var(--encre); stroke-width: 2; }
-.carte-label { font: 700 14px var(--texte); fill: var(--encre); paint-order: stroke; stroke: #fffdf9; stroke-width: 4px; }
+.carte-label { font-family: var(--texte); font-weight: 700; fill: var(--encre); paint-order: stroke; stroke: #fffdf9; }
 .carte-toulouse circle { fill: var(--encre); stroke: #fffdf9; stroke-width: 2; }
-.carte-toulouse text { font: 600 13px var(--texte); fill: var(--encre); paint-order: stroke; stroke: #fffdf9; stroke-width: 3px; }
+.carte-toulouse text { font-family: var(--texte); font-weight: 700; fill: var(--encre); paint-order: stroke; stroke: #fffdf9; pointer-events: none; }
 .carte-et-panneau { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
 .panneau { background: var(--surface-2); border-radius: 12px; padding: 16px; max-height: 560px; overflow: auto; }
 .liste-expos, .classement-simple { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
@@ -321,6 +327,50 @@ input[type='search'] { min-width: 220px; flex: 1; }
 .a-vous ol { display: grid; gap: 8px; padding-left: 20px; }
 .a-vous .note { color: #cdb8a4; }
 
+
+/* Recherche intelligente */
+.recherche { position: relative; flex: 1 1 380px; min-width: 260px; }
+.recherche-champ { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--trait); border-radius: 10px; padding: 3px 10px; min-height: 42px; background: var(--surface); cursor: text; color: var(--discret); }
+.recherche-champ:focus-within { border-color: var(--brique); box-shadow: 0 0 0 3px var(--brique-clair); }
+.recherche input[type='search'] { border: 0; min-height: 32px; padding: 4px 2px; min-width: 140px; flex: 1; background: transparent; outline: none; box-shadow: none; }
+.pastille-filtre { display: inline-flex; align-items: center; gap: 6px; background: var(--brique-clair); color: var(--encre); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 13px; font-weight: 600; max-width: 100%; }
+.pastille-filtre small { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--brique); font-weight: 700; }
+.pastille-filtre button { border: 0; background: rgba(0, 0, 0, .08); border-radius: 50%; width: 20px; height: 20px; line-height: 1; padding: 0; font-size: 14px; }
+.pastille-filtre.t-artiste { background: #e6eef7; } .pastille-filtre.t-artiste small { color: #24507f; }
+.pastille-filtre.t-ville, .pastille-filtre.t-pays { background: #e3f2e8; } .pastille-filtre.t-ville small, .pastille-filtre.t-pays small { color: #1f5e39; }
+.pastille-filtre.t-institution, .pastille-filtre.t-expo { background: #fbeed6; } .pastille-filtre.t-institution small, .pastille-filtre.t-expo small { color: #7a5510; }
+.suggestions { position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: min(420px, 90vw); max-height: 62vh; overflow: auto; background: var(--surface); border: 1px solid var(--trait); border-radius: 12px; box-shadow: 0 12px 40px rgba(40, 25, 10, .18); z-index: 40; padding: 6px; }
+.sugg-type { margin: 8px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--brique); font-weight: 700; }
+.sugg { display: flex; justify-content: space-between; gap: 12px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 8px; align-items: baseline; }
+.sugg.actif { background: var(--surface-2); }
+.sugg-l { font-weight: 600; font-size: 14px; }
+.sugg-l mark { background: #f6dcc9; color: inherit; border-radius: 2px; }
+.sugg-s { font-size: 12.5px; color: var(--discret); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
+.sugg-vide, .sugg-pied { font-size: 12.5px; color: var(--discret); margin: 8px 10px; }
+.sugg-pied { border-top: 1px solid var(--trait); padding-top: 8px; }
+
+/* Barre de filtres flottante */
+.filtres.flottants { position: sticky; top: 82px; z-index: 15; box-shadow: 0 6px 24px rgba(40, 25, 10, .10); background: rgba(255, 253, 249, .96); backdrop-filter: blur(6px); }
+.compteur-filtre { font-size: 14px; color: var(--encre-2); white-space: nowrap; }
+.compteur-filtre strong { font-family: var(--titre); font-size: 20px; color: var(--encre); }
+.panneau-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.panneau-actions .bouton { font-size: 13px; padding: 8px 12px; }
+
+/* Musées */
+.grille-musees { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+.carte-musee { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; text-align: left; border: 1px solid var(--trait); background: var(--surface); border-radius: 12px; padding: 8px; }
+.carte-musee:hover { border-color: var(--brique); box-shadow: var(--ombre); }
+.carte-musee img, .musee-initiales { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; background: var(--surface-2); }
+.musee-initiales { display: flex; align-items: center; justify-content: center; background: var(--brique-clair); color: var(--brique); font-family: var(--titre); font-size: 24px; font-weight: 650; }
+.cm-texte { display: flex; flex-direction: column; min-width: 0; }
+.cm-texte strong { font-size: 14.5px; line-height: 1.25; }
+.cm-texte small { color: var(--encre-2); font-size: 12.5px; }
+.cm-texte .cm-chiffres { color: var(--discret); margin-top: 2px; }
+.musee-grand { height: 300px; }
+.musee-grand .musee-initiales { width: 130px; height: 130px; font-size: 46px; border-radius: 50%; }
+.expos-musee { display: grid; gap: 18px; margin-top: 10px; }
+.expo-musee p { margin: 0 0 8px; }
+
 /* Responsive */
 @media (max-width: 1100px) {
   .kpis { grid-template-columns: repeat(3, 1fr); }
@@ -333,6 +383,7 @@ input[type='search'] { min-width: 220px; flex: 1; }
   .grille-2, .carte-et-panneau, .grille-hlm, .jeu-grille, .carnet-grille, .fiche, .sources, .verdicts { grid-template-columns: 1fr; }
   .itineraire li { grid-template-columns: 1fr; gap: 2px; }
   .entete { position: static; }
+  .filtres.flottants { top: 6px; }
 }
 @media (max-width: 560px) {
   .page { padding: 16px 16px 40px; }
