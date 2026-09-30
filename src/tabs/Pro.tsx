@@ -219,7 +219,7 @@ function CarteDestinations({ prets, filtrerVille }: { prets: Pret[]; filtrerVill
       </div>
       <p className="sous">Taille des cercles : nombre de prêts. Cliquez une ville pour voir ses expositions.</p>
       <div className="carte-et-panneau">
-        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} rMax={vue === 'monde' ? 16 : 26} etiquettes={vue === 'monde' ? 8 : 14} />
+        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} rMax={vue === 'monde' ? 16 : 26} etiquettes={vue === 'monde' ? 10 : 40} />
         <aside className="panneau">
           {sel ? (
             <>
