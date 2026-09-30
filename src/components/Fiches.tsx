@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect } from 'react'
 import { WorldMap } from './WorldMap'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, siecleRomain, type Index } from '../util'
-import { initiales, institutions, usePhotosMusees } from './Musees'
+import { initiales, institutions, usePhotoMusee } from './Musees'
 
 export type Cible = { type: 'oeuvre' | 'artiste' | 'musee'; id: string } | null
 export const FicheCtx = createContext<(c: Cible) => void>(() => {})
@@ -118,10 +118,9 @@ function FicheArtiste({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c:
 }
 
 function FicheMusee({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: Cible) => void }) {
-  const photos = usePhotosMusees()
+  const photo = usePhotoMusee(id)
   const m = institutions(idx.data.prets.filter((p) => p.musee + '|' + p.ville === id))[0]
   if (!m) return <p>Institution introuvable.</p>
-  const photo = photos[id]
   const expos = [...new Map(m.prets.map((p) => [p.expo + p.debut, p])).values()].sort((a, b) => b.debut.localeCompare(a.debut))
   const autresIci = institutions(idx.data.prets.filter((p) => p.ville === m.ville && p.pays === m.pays)).filter((x) => x.cle !== id)
   return (
