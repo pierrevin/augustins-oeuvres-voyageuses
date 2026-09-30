@@ -4,7 +4,7 @@ import { feature } from 'topojson-client'
 import world from 'world-atlas/countries-110m.json'
 import { TOULOUSE } from '../../lib/geo.js'
 
-export type Vue = 'monde' | 'europe' | 'france'
+export type Vue = 'monde' | 'europe' | 'france' | 'auto'
 export interface Point {
   key: string
   lat: number
@@ -21,12 +21,24 @@ export interface Trajet {
 }
 
 const PAYS_GEO = feature(world as any, (world as any).objects.countries) as any
-const CADRES: Record<Vue, [[number, number], [number, number]]> = {
+const CADRES: Record<Exclude<Vue, 'auto'>, [[number, number], [number, number]]> = {
   monde: [[-160, -50], [178, 72]],
   europe: [[-9, 36], [22, 57]],
   france: [[-4.8, 42.2], [8.4, 51.2]],
 }
 const W = 960
+
+/** Cadre ajusté à Toulouse + destinations, avec une marge et une taille minimale. */
+function cadreAuto(trajets: Trajet[]): [[number, number], [number, number]] {
+  const lons = [TOULOUSE[1], ...trajets.map((t) => t.lon)]
+  const lats = [TOULOUSE[0], ...trajets.map((t) => t.lat)]
+  let [x0, x1] = [Math.min(...lons), Math.max(...lons)]
+  let [y0, y1] = [Math.min(...lats), Math.max(...lats)]
+  const mx = Math.max(8 - (x1 - x0), 0) / 2 + (x1 - x0) * 0.12
+  const my = Math.max(5 - (y1 - y0), 0) / 2 + (y1 - y0) * 0.15
+  ;[x0, x1, y0, y1] = [x0 - mx, x1 + mx, y0 - my, y1 + my]
+  return [[x0, y0], [x1, y1]]
+}
 
 export function WorldMap({
   points = [],
@@ -50,15 +62,17 @@ export function WorldMap({
   const [survol, setSurvol] = useState<Point | null>(null)
   const H = hauteur
   const { path, proj } = useMemo(() => {
-    const [[x0, y0], [x1, y1]] = CADRES[vue]
+    let [[x0, y0], [x1, y1]] = vue === 'auto' ? cadreAuto(trajets) : CADRES[vue]
+    const large = x1 - x0 > 70
+    if (large) [[x0, y0], [x1, y1]] = [[Math.max(-170, x0), Math.max(-55, y0)], [Math.min(179, x1), Math.min(72, y1)]]
     const cadre = {
       type: 'Feature',
       geometry: { type: 'MultiPoint', coordinates: [[x0, y0], [x1, y1], [x0, y1], [x1, y0], [(x0 + x1) / 2, y1]] },
     } as any
-    const proj = (vue === 'monde' ? d3.geoNaturalEarth1() : d3.geoConicConformal().parallels([40, 55]).rotate([-6, 0]))
+    const proj = (vue === 'monde' || large ? d3.geoNaturalEarth1().rotate([-(x0 + x1) / 2 * (vue === 'monde' ? 0 : 1), 0]) : d3.geoConicConformal().parallels([40, 55]).rotate([-6, 0]))
       .fitExtent([[12, 12], [W - 12, H - 12]], cadre)
     return { path: d3.geoPath(proj), proj }
-  }, [vue, H])
+  }, [vue, H, vue === 'auto' ? trajets.map((t) => t.lat + ',' + t.lon).join(';') : ''])
 
   const max = d3.max(points, (p) => p.valeur) ?? 1
   const r = d3.scaleSqrt().domain([0, max]).range([0, rMax])

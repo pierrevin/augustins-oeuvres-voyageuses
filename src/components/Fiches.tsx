@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect } from 'react'
-import { WorldMap, type Vue } from './WorldMap'
+import { WorldMap } from './WorldMap'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, siecleRomain, type Index } from '../util'
 
 export type Cible = { type: 'oeuvre' | 'artiste'; id: string } | null
@@ -22,12 +22,6 @@ export function Fiche({ cible, idx, fermer }: { cible: Cible; idx: Index; fermer
       </div>
     </div>
   )
-}
-
-function vueAdaptee(pays: string[]): Vue {
-  if (pays.every((p) => p === 'France')) return 'france'
-  const europe = ['France', 'Allemagne', 'Espagne', 'Italie', 'Suisse', 'Belgique', 'Pays-Bas', 'Autriche', 'Angleterre', 'Hongrie', 'Pologne', 'Suède', 'Danemark', 'Luxembourg', 'Andorre', 'Roumanie']
-  return pays.every((p) => europe.includes(p)) ? 'europe' : 'monde'
 }
 
 function FicheOeuvre({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: Cible) => void }) {
@@ -71,7 +65,7 @@ function FicheOeuvre({ id, idx, ouvrir }: { id: string; idx: Index; ouvrir: (c: 
       </div>
       <div className="fiche-voyages">
         <h3>Ses voyages</h3>
-        {geo.length > 0 && <WorldMap vue={vueAdaptee(geo.map((p) => p.pays))} hauteur={400} trajets={geo.map((p) => ({ lat: p.lat!, lon: p.lon!, etat: 'fait' }))} rMax={0} />}
+        {geo.length > 0 && <WorldMap vue="auto" hauteur={400} trajets={geo.map((p) => ({ lat: p.lat!, lon: p.lon!, etat: 'fait' }))} rMax={0} />}
         <ol className="itineraire">
           {prets.map((p) => (
             <li key={p.id}>

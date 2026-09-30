@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
 import { DOMAINES, type Domaine, type Oeuvre, type Pret } from '../../lib/types.js'
 import { PAYS } from '../../lib/geo.js'
-import { WorldMap, type Vue } from '../components/WorldMap'
+import { WorldMap } from '../components/WorldMap'
 import { useFiche } from '../components/Fiches'
 import { COULEUR_DOMAINE, Img, dateFr, fmt, melanger, moisAnnee, siecleRomain, stockage, type Index } from '../util'
 
@@ -10,8 +10,6 @@ type Section = 'jeu' | 'carnet' | 'explorer' | 'passeport'
 interface Passeport { pays: string[]; oeuvres: string[]; meilleur: number; parties: number }
 const [lirePasseport, ecrirePasseport] = stockage<Passeport>('augustins-passeport', { pays: [], oeuvres: [], meilleur: 0, parties: 0 })
 
-const EUROPE = new Set(Object.entries(PAYS).filter(([, v]) => v.continent === 'Europe').map(([k]) => k))
-const vueDe = (pays: string[]): Vue => (pays.every((p) => p === 'France') ? 'france' : pays.every((p) => EUROPE.has(p)) ? 'europe' : 'monde')
 
 export function Public({ idx }: { idx: Index }) {
   const [section, setSection] = useState<Section>('jeu')
@@ -175,7 +173,7 @@ function Jeu({ idx, passeport, maj }: { idx: Index; passeport: Passeport; maj: (
         </div>
         {reponse && q.pret.lat !== null && (
           <div className="jeu-carte">
-            <WorldMap vue={vueDe([q.pret.pays])} hauteur={420} trajets={[{ lat: q.pret.lat, lon: q.pret.lon!, etat: 'actif', label: q.pret.ville }]} />
+            <WorldMap vue="auto" hauteur={420} trajets={[{ lat: q.pret.lat, lon: q.pret.lon!, etat: 'actif', label: q.pret.ville }]} />
           </div>
         )}
       </div>
@@ -231,7 +229,7 @@ function Carnet({ idx }: { idx: Index }) {
         </div>
         <div className="carnet-carte">
           <WorldMap
-            vue={vueDe(prets.map((p) => p.pays))}
+            vue="auto"
             hauteur={520}
             rMax={0}
             trajets={prets.map((p, i) => ({ lat: p.lat!, lon: p.lon!, etat: i < etape - 1 ? 'fait' : i === etape - 1 ? 'actif' : 'futur', label: p.ville }))}
