@@ -1,5 +1,5 @@
-export type Domaine = 'Peinture' | 'Sculpture' | 'Arts graphiques' | 'Autre'
-export const DOMAINES: Domaine[] = ['Peinture', 'Sculpture', 'Arts graphiques', 'Autre']
+export type Domaine = 'Peinture' | 'Sculpture' | 'Arts graphiques' | 'Autre ou inconnu'
+export const DOMAINES: Domaine[] = ['Peinture', 'Sculpture', 'Arts graphiques', 'Autre ou inconnu']
 
 export interface Oeuvre {
   id: string

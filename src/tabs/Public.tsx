@@ -175,7 +175,7 @@ function Jeu({ idx, passeport, maj }: { idx: Index; passeport: Passeport; maj: (
         </div>
         {reponse && q.pret.lat !== null && (
           <div className="jeu-carte">
-            <WorldMap vue={vueDe([q.pret.pays])} hauteur={420} trajets={[{ lat: q.pret.lat, lon: q.pret.lon!, etat: 'actif' }]} />
+            <WorldMap vue={vueDe([q.pret.pays])} hauteur={420} trajets={[{ lat: q.pret.lat, lon: q.pret.lon!, etat: 'actif', label: q.pret.ville }]} />
           </div>
         )}
       </div>
@@ -234,7 +234,7 @@ function Carnet({ idx }: { idx: Index }) {
             vue={vueDe(prets.map((p) => p.pays))}
             hauteur={520}
             rMax={0}
-            trajets={prets.map((p, i) => ({ lat: p.lat!, lon: p.lon!, etat: i < etape - 1 ? 'fait' : i === etape - 1 ? 'actif' : 'futur' }))}
+            trajets={prets.map((p, i) => ({ lat: p.lat!, lon: p.lon!, etat: i < etape - 1 ? 'fait' : i === etape - 1 ? 'actif' : 'futur', label: p.ville }))}
           />
           <ol className="etapes">
             {prets.map((p, i) => (

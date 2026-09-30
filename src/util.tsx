@@ -5,7 +5,7 @@ export const COULEUR_DOMAINE: Record<Domaine, string> = {
   Peinture: '#b4532a',
   Sculpture: '#2a6fc0',
   'Arts graphiques': '#d19a1f',
-  Autre: '#2e8f55',
+  'Autre ou inconnu': '#2e8f55',
 }
 
 export const nf = new Intl.NumberFormat('fr-FR')

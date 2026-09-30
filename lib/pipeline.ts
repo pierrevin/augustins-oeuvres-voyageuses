@@ -38,11 +38,11 @@ const slug = (s: string) => cleArtiste(s).replace(/ /g, '-') || 'inconnu'
 const jours = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5)
 
 function domaineDe(d: string | null): Domaine {
-  if (!d) return 'Autre'
+  if (!d) return 'Autre ou inconnu'
   if (d === 'Peinture') return 'Peinture'
   if (d === 'Sculpture') return 'Sculpture'
   if (['Dessin', 'Arts graphiques', 'Gravure', 'Pastel'].includes(d)) return 'Arts graphiques'
-  return 'Autre'
+  return 'Autre ou inconnu'
 }
 function siecleDe(datation: string | null): number | null {
   const m = (datation ?? '').match(/\d{3,4}/)
@@ -506,8 +506,8 @@ export async function construire(fetchJson: FetchJson, checkUrl?: CheckUrl): Pro
   const sommeBrute = pretsBruts.reduce((s, p) => s + (p.date_de_debut && p.date_de_fin ? jours(p.date_de_debut, p.date_de_fin) : 0), 0)
   const brutVsNet: BrutNet[] = [
     { indicateur: 'Œuvres distinctes', brut: distinctBrut, net: distinctNet, commentaire: 'Les espaces invisibles dédoublent des œuvres.' },
-    { indicateur: 'Institutions emprunteuses', brut: new Set(pretsBruts.map((p) => p.musee)).size, net: new Set(prets.map((p) => p.musee)).size, commentaire: 'Majuscules et apostrophes créent des doublons.' },
-    { indicateur: 'Artistes', brut: new Set(pretsBruts.map((p) => p.auteur)).size, net: artistes.length, commentaire: 'Traits d’union présents ou absents.' },
+    { indicateur: 'Institutions emprunteuses', brut: new Set(pretsBruts.map((p) => p.musee + '|' + p.ville)).size, net: new Set(prets.map((p) => p.musee + '|' + p.ville)).size, commentaire: 'Majuscules et apostrophes créent des doublons. Une institution = un nom dans une ville (il y a des « Musée des Beaux-Arts » partout).' },
+    { indicateur: 'Artistes', brut: new Set(pretsBruts.map((p) => p.auteur)).size, net: artistes.length, commentaire: 'Traits d’union, espaces en trop, attribution qui varie d’un prêt à l’autre pour une même œuvre.' },
     { indicateur: 'Pays', brut: new Set(pretsBruts.map((p) => p.pays)).size, net: new Set(prets.map((p) => p.pays)).size, commentaire: 'Le nombre ne bouge pas, mais des prêts changent de pays.' },
     { indicateur: 'Prêts hors de France', brut: pretsBruts.filter((p) => p.pays !== 'France').length, net: prets.filter((p) => p.pays !== 'France').length, commentaire: 'Hambourg, Montréal, Pérouse, Pavie, Berne étaient rangées en France.' },
     { indicateur: 'Jours hors les murs (cumul)', brut: sommeBrute, net: prets.reduce((s, p) => s + (p.jours ?? 0), 0), commentaire: 'Les dates inversées retranchent des jours.' },
@@ -522,7 +522,7 @@ export async function construire(fetchJson: FetchJson, checkUrl?: CheckUrl): Pro
     prets,
     artistes,
     collection: {
-      domaines: (['Peinture', 'Sculpture', 'Arts graphiques', 'Autre'] as Domaine[]).map((d) => ({ domaine: d, total: totalParDomaine.get(d) ?? 0, pretees: pretesParDomaine.get(d) ?? 0 })),
+      domaines: (['Peinture', 'Sculpture', 'Arts graphiques', 'Autre ou inconnu'] as Domaine[]).map((d) => ({ domaine: d, total: totalParDomaine.get(d) ?? 0, pretees: pretesParDomaine.get(d) ?? 0 })),
       totalInventaire: NI,
       totalDepots: depots.length,
       inventaireAvecImage: inventaire.filter((x) => x.image).length,

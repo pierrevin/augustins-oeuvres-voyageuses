@@ -17,12 +17,13 @@ export interface Trajet {
   lat: number
   lon: number
   etat: 'fait' | 'actif' | 'futur'
+  label?: string
 }
 
 const PAYS_GEO = feature(world as any, (world as any).objects.countries) as any
 const CADRES: Record<Vue, [[number, number], [number, number]]> = {
   monde: [[-160, -50], [178, 72]],
-  europe: [[-10, 35], [28, 60]],
+  europe: [[-9, 36], [22, 57]],
   france: [[-4.8, 42.2], [8.4, 51.2]],
 }
 const W = 960
@@ -54,7 +55,7 @@ export function WorldMap({
       type: 'Feature',
       geometry: { type: 'MultiPoint', coordinates: [[x0, y0], [x1, y1], [x0, y1], [x1, y0], [(x0 + x1) / 2, y1]] },
     } as any
-    const proj = (vue === 'monde' ? d3.geoNaturalEarth1() : d3.geoConicConformal().parallels([40, 55]).rotate([-10, 0]))
+    const proj = (vue === 'monde' ? d3.geoNaturalEarth1() : d3.geoConicConformal().parallels([40, 55]).rotate([-6, 0]))
       .fitExtent([[12, 12], [W - 12, H - 12]], cadre)
     return { path: d3.geoPath(proj), proj }
   }, [vue, H])
@@ -101,7 +102,12 @@ export function WorldMap({
         })}
         {trajets.map((t, i) => {
           const xy = proj([t.lon, t.lat])
-          return xy && t.etat !== 'futur' ? <circle key={'e' + i} cx={xy[0]} cy={xy[1]} r={t.etat === 'actif' ? 7 : 4} className={'carte-etape ' + t.etat} /> : null
+          return xy && t.etat !== 'futur' ? (
+            <g key={'e' + i}>
+              <circle cx={xy[0]} cy={xy[1]} r={t.etat === 'actif' ? 7 : 4} className={'carte-etape ' + t.etat} />
+              {t.etat === 'actif' && t.label && <text x={xy[0] + (xy[0] > W - 160 ? -10 : 10)} y={xy[1] + 18} textAnchor={xy[0] > W - 160 ? 'end' : 'start'} className="carte-label">{t.label}</text>}
+            </g>
+          ) : null
         })}
         <g className="carte-toulouse">
           <circle cx={tlse[0]} cy={tlse[1]} r={5} />

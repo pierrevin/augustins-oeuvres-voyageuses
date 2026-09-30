@@ -92,7 +92,7 @@ function Indicateurs({ prets, idx }: { prets: Pret[]; idx: Index }) {
   const k = [
     { v: prets.length, l: 'prêts' },
     { v: oeuvres.size, l: 'œuvres différentes' },
-    { v: new Set(prets.map((p) => p.musee)).size, l: 'institutions emprunteuses' },
+    { v: new Set(prets.map((p) => p.musee + '|' + p.ville)).size, l: 'institutions emprunteuses' },
     { v: new Set(prets.map((p) => p.ville + p.pays)).size, l: 'villes' },
     { v: new Set(prets.map((p) => p.pays)).size, l: 'pays' },
     { v: d3.sum(prets, (p) => p.jours ?? 0), l: 'jours hors les murs (cumul)' },
@@ -217,7 +217,7 @@ function CarteDestinations({ prets }: { prets: Pret[] }) {
       </div>
       <p className="sous">Taille des cercles : nombre de prêts. Cliquez une ville pour voir ses expositions.</p>
       <div className="carte-et-panneau">
-        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} />
+        <WorldMap vue={vue} points={points} selection={sel} onSelect={setSel} hauteur={vue === 'monde' ? 470 : 560} rMax={vue === 'monde' ? 16 : 26} />
         <aside className="panneau">
           {sel ? (
             <>
@@ -319,7 +319,7 @@ function HorsLesMurs({ idx }: { idx: Index }) {
 function Classements({ prets, idx }: { prets: Pret[]; idx: Index }) {
   const ouvrir = useFiche()
   const parOeuvre = d3.rollups(prets, (v) => ({ n: v.length, j: d3.sum(v, (p) => p.jours ?? 0) }), (p) => p.oeuvreId)
-  const parMusee = d3.rollups(prets, (v) => ({ n: v.length, ans: new Set(v.map((p) => p.annee)).size, ville: v[0].ville }), (p) => p.musee)
+  const parMusee = d3.rollups(prets, (v) => ({ n: v.length, ans: new Set(v.map((p) => p.annee)).size, ville: v[0].ville }), (p) => p.musee + '|' + p.ville)
   const parArtiste = d3.rollups(prets, (v) => ({ n: v.length, o: new Set(v.map((p) => p.oeuvreId)).size }), (p) => idx.oeuvre.get(p.oeuvreId)!.artisteId)
   const Liste = ({ titre, items }: { titre: string; items: { k: string; label: string; sous: string; v: number; onClick?: () => void }[] }) => {
     const max = d3.max(items, (i) => i.v) || 1
@@ -348,7 +348,7 @@ function Classements({ prets, idx }: { prets: Pret[]; idx: Index }) {
       <div className="grille-4">
         <Liste titre="Œuvres les plus prêtées" items={parOeuvre.sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([id, v]) => ({ k: id, label: o(id).titre, sous: o(id).artiste, v: v.n, onClick: () => ouvrir({ type: 'oeuvre', id }) }))} />
         <Liste titre="Jours hors les murs" items={parOeuvre.sort((a, b) => b[1].j - a[1].j).slice(0, 10).map(([id, v]) => ({ k: id, label: o(id).titre, sous: `${o(id).artiste} · ${v.n} prêts`, v: v.j, onClick: () => ouvrir({ type: 'oeuvre', id }) }))} />
-        <Liste titre="Emprunteurs fidèles" items={parMusee.sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([m, v]) => ({ k: m, label: m, sous: `${v.ville} · ${v.ans} année${v.ans > 1 ? 's' : ''} différente${v.ans > 1 ? 's' : ''}`, v: v.n }))} />
+        <Liste titre="Emprunteurs fidèles" items={parMusee.sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([m, v]) => ({ k: m, label: m.split('|')[0], sous: `${v.ville} · ${v.ans} année${v.ans > 1 ? 's' : ''} différente${v.ans > 1 ? 's' : ''}`, v: v.n }))} />
         <Liste titre="Artistes les plus demandés" items={parArtiste.sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([id, v]) => ({ k: id, label: idx.data.artistes.find((x) => x.id === id)?.nom ?? id, sous: `${v.o} œuvre${v.o > 1 ? 's' : ''}`, v: v.n, onClick: () => ouvrir({ type: 'artiste', id }) }))} />
       </div>
     </section>

@@ -66,17 +66,17 @@ export function Coulisses({ idx }: { idx: Index }) {
           <div className="verdict-carte bon">
             <span className="verdict-note">Plutôt propre</span>
             <h3>Prêts</h3>
-            <p>Structure simple et régulière, pays et dates bien formés, aucun doublon exact. Mais {c('espaces-invisibles')?.nb ?? 0} numéros d’inventaire piégés par des espaces invisibles, {c('dates-inversees')?.nb ?? 0} dates inversées, {c('lieux')?.nb ?? 0} prêts mal localisés et {pct(data.images.cassees + data.images.repareesCasse, data.images.urls)} % de liens d’images défaillants. Utilisable après une demi-douzaine de règles.</p>
+            <p>Structure simple et régulière, pays et dates bien formés, aucun doublon exact. Mais {c('espaces-invisibles')?.nb ?? 0} numéros d’inventaire piégés par des espaces invisibles, {c('dates-inversees')?.nb ?? 0} dates inversées, {c('lieux')?.nb ?? 0} prêts mal localisés et {pct(data.images.cassees + data.images.repareesCasse, data.images.urls)} % de liens d’images défaillants. Utilisable après une demi-douzaine de règles.</p>
           </div>
           <div className="verdict-carte moyen">
             <span className="verdict-note">Exploitable, pas analysable tel quel</span>
             <h3>Inventaire</h3>
-            <p>Riche ({data.sources[1].champs} colonnes), mais c’est l’export d’une base de gestion, pas un jeu pensé pour l’analyse : datation en texte libre ({c('datation')?.nb ?? '?'} formats), dimensions et prix en texte, {pct(c('premier-janvier')?.nb ?? 0, c('premier-janvier')?.total ?? 1)} % de dates au 1er janvier, colonnes vides.</p>
+            <p>Riche ({data.sources[1].champs} colonnes), mais c’est l’export d’une base de gestion, pas un jeu pensé pour l’analyse : datation en texte libre ({c('datation')?.nb ?? '?'} formats), dimensions et prix en texte, {pct(c('premier-janvier')?.nb ?? 0, c('premier-janvier')?.total ?? 1)} % de dates au 1er janvier, colonnes vides.</p>
           </div>
           <div className="verdict-carte moyen">
             <span className="verdict-note">Fragile sans normalisation</span>
             <h3>Croisement</h3>
-            <p>Les deux jeux ne partagent qu’une clé fiable : le numéro d’inventaire. Comparé tel quel, il ne relie que {appar?.brut} œuvres sur {oeuvresPretees}. Normalisé, et avec le registre des dépôts, {appar?.net}. Les auteurs et les titres ne sont pas écrits de la même façon d’un jeu à l’autre.</p>
+            <p>Les deux jeux ne partagent qu’une clé fiable : le numéro d’inventaire. Comparé tel quel, il ne relie que {appar?.brut} œuvres sur {c('appariement')?.total ?? oeuvresPretees}. Normalisé, et avec le registre des dépôts, {appar?.net}. Les auteurs et les titres ne sont pas écrits de la même façon d’un jeu à l’autre.</p>
           </div>
         </div>
       </section>
